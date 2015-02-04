@@ -101,6 +101,9 @@ int sysctl_tcp_thin_dupack __read_mostly;
 int sysctl_tcp_moderate_rcvbuf __read_mostly = 1;
 int sysctl_tcp_early_retrans __read_mostly = 3;
 
+int sysctl_tcp_initial_spreading_rate_min __read_mostly = 0;
+int sysctl_tcp_initial_spreading_debug __read_mostly = 0;
+
 #define FLAG_DATA		0x01 /* Incoming frame contained data.		*/
 #define FLAG_WIN_UPDATE		0x02 /* Incoming ACK was a window update.	*/
 #define FLAG_DATA_ACKED		0x04 /* This ACK acknowledged new data.		*/
@@ -768,6 +771,34 @@ static void tcp_update_pacing_rate(struct sock *sk)
 	 */
 	ACCESS_ONCE(sk->sk_pacing_rate) = min_t(u64, rate,
 						sk->sk_max_pacing_rate);
+}
+
+/* Set the sk_pacing_rate to allow FQ packet scheduler doing TCP initial
+ * spreading.
+ * See
+ * https://tools.ietf.org/html/draft-sallantin-tcpm-initial-spreading-00
+ */
+static void tcp_set_initial_pacing_rate(struct sock *sk)
+{
+	const struct tcp_sock *tp = tcp_sk(sk);
+	u64 rate;
+
+	/* set sk_pacing_rate to 100 % of current rate (mss * cwnd / srtt) */
+	rate = (u64)tp->mss_cache * (HZ << 3) * tp->snd_cwnd;
+
+	if (tp->srtt > 8 + 2)
+		do_div(rate, tp->srtt);
+
+    /* rate_min = mtu / T_spreading (see draft) */
+	if (sysctl_tcp_initial_spreading_rate_min)
+		rate = max_t(u64, rate,	sysctl_tcp_initial_spreading_rate_min);
+
+	rate = min_t(u64, rate,	sk->sk_max_pacing_rate);
+
+	if (sysctl_tcp_initial_spreading_debug)
+		printk(KERN_INFO "tcp_pacing_rate: %llu\n", rate);
+
+	ACCESS_ONCE(sk->sk_pacing_rate) = rate;
 }
 
 /* Calculate rto without backoff.  This is the second half of Van Jacobson's
@@ -5714,7 +5745,7 @@ int tcp_rcv_state_process(struct sock *sk, struct sk_buff *skb,
 		} else
 			tcp_init_metrics(sk);
 
-		tcp_update_pacing_rate(sk);
+		tcp_set_initial_pacing_rate(sk);
 
 		/* Prevent spurious tcp_cwnd_restart() on first data packet */
 		tp->lsndtime = tcp_time_stamp;

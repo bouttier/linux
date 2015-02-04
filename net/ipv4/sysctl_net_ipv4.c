@@ -745,6 +745,21 @@ static struct ctl_table ipv4_table[] = {
 		.extra1		= &zero,
 	},
 	{
+		.procname	= "tcp_initial_spreading_rate_min",
+		.data		= &sysctl_tcp_initial_spreading_rate_min,
+		.maxlen		= sizeof(int),
+		.mode		= 0644,
+		.proc_handler	= proc_dointvec,
+	},
+	{
+		.procname	= "tcp_initial_spreading_debug",
+		.data		= &sysctl_tcp_initial_spreading_debug,
+		.maxlen		= sizeof(int),
+		.mode		= 0644,
+		.proc_handler	= proc_dointvec,
+	},
+	{
+
 		.procname	= "udp_mem",
 		.data		= &sysctl_udp_mem,
 		.maxlen		= sizeof(sysctl_udp_mem),
