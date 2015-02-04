@@ -643,6 +643,19 @@ tcp_challenge_ack_limit - INTEGER
 	in RFC 5961 (Improving TCP's Robustness to Blind In-Window Attacks)
 	Default: 100
 
+tcp_initial_spreading_min_rate - INTEGER
+    Minimal rate value computed by initial spreading algorithm.
+    Disabled if set to zero.
+    See
+    https://tools.ietf.org/html/draft-sallantin-tcpm-initial-spreading-00.
+    We have the relation rate_min = MTU / T_spreading.
+    Default: 0
+
+tcp_initial_spreading_debug - BOOLEAN
+    When non-zero, a kernel log message will print the rate computed by Initial
+    Spreading each time a TCP connection is initialized.
+    Default: 0
+
 UDP variables:
 
 udp_mem - vector of 3 INTEGERs: min, pressure, max
